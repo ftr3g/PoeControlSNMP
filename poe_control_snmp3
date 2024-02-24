@@ -1,0 +1,84 @@
+#!/bin/bash
+# Fonction pour afficher l'utilisation du script
+usage() {
+    echo "Usage: $0 --user SNMP_USER --authpass AUTH_PASSWORD --privpass PRIVACY_PASSWORD --switch SWITCH_IP [--on PORT] [--off PORT] [--status PORT]"
+    exit 1
+}
+
+# Initialisation des variables par défaut
+user=""
+authpass=""
+privpass=""
+switchip=""
+
+# Analyser les options
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --user)
+            user="$2"
+            shift 2
+            ;;
+        --authpass)
+            authpass="$2"
+            shift 2
+            ;;
+        --privpass)
+            privpass="$2"
+            shift 2
+            ;;
+        --switch)
+            switchip="$2"
+            shift 2
+            ;;
+        --on)
+            action="on"
+            port="$2"
+            shift 2
+            ;;
+        --off)
+            action="off"
+            port="$2"
+            shift 2
+            ;;
+        --status)
+            action="status"
+            port="$2"
+            shift 2
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+
+# Vérifier si les options obligatoires sont spécifiées
+if [ -z "$user" ] || [ -z "$authpass" ] || [ -z "$privpass" ] || [ -z "$switchip" ]; then
+    echo "Les options --user, --authpass, --privpass et --switch doivent être spécifiées."
+    usage
+fi
+
+# Vérifier si l'action est spécifiée
+if [ -z "$action" ]; then
+    usage
+fi
+
+# Exécuter l'action appropriée
+case "$action" in
+    on)
+        state=1
+        ;;
+    off)
+        state=0
+        ;;
+    status)
+        # Afficher le status du port
+        snmpwalk_output=$(snmpwalk -v3 -u "$user" -A "$authpass" -a SHA -X "$privpass" -x DES -l authPriv "$switchip" "1.3.6.1.4.1.11863.1.1.8.13.1.2.1.1.2.$port" | awk '{print substr($0,length,1)}')
+        echo $snmpwalk_output
+        exit
+        ;;
+esac
+
+
+# Exécuter la commande SNMP pour activer ou désactiver le PoE sur le port spécifié
+        snmpset_output=$(snmpset -v3 -u "$user" -A "$authpass" -a SHA -X "$privpass" -x DES -l authPriv "$switchip" "1.3.6.1.4.1.11863.1.1.8.13.1.2.1.1.2.$port" i "$state" | awk '{print substr($0,length,1)}')
+        echo $snmpset_output
